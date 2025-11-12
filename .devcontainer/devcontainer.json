@@ -4,9 +4,9 @@
 	// To build a Docker virtual machine locally, comment the "image" line and uncomment
 	// the "build" lines below.
 	"image": "j00sko/programiranje1:latest",
-	// "build": {
-	// 	"dockerfile": "Dockerfile"
-	// },
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
 	"customizations": {
 		"vscode": {
 			"extensions": [

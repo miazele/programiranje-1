@@ -20,6 +20,12 @@ module type NAT = sig
 
   val eq  : t -> t -> bool
   val zero : t
+  val one : t
+  val ( + ) : t -> t -> t
+  val ( - ) : t -> t -> t
+  val ( * ) : t -> t -> t
+  val to_int : t -> int
+  val of_int : int -> t
   (* Dodajte manjkajoče! *)
   (* val to_int : t -> int *)
   (* val of_int : int -> t *)
@@ -36,8 +42,14 @@ end
 module Nat_int : NAT = struct
 
   type t = int
-  let eq x y = failwith "later"
+  let eq x y = (x = y)
   let zero = 0
+  let one = 1
+  let ( + ) x y = x + y
+  let ( - ) x y = x - y
+  let ( * ) x y = x * y
+  let to_int t = t
+  let of_int t = t
   (* Dodajte manjkajoče! *)
 
 end
@@ -53,10 +65,38 @@ end
 
 module Nat_peano : NAT = struct
 
-  type t = unit (* To morate spremeniti! *)
-  let eq x y = failwith "later"
-  let zero = () (* To morate spremeniti! *)
-  (* Dodajte manjkajoče! *)
+  type t = | Nic | Naslednik of t
+
+  let rec eq x y = match (x, y) with
+    | Nic, Nic -> true
+    | (Naslednik (a)), (Naslednik (b)) -> eq a b
+    | Nic, Naslednik a -> false
+    | (Naslednik (a)), Nic -> false
+  
+  let zero = Nic
+
+  let one = Naslednik (Nic)
+
+  let rec ( + ) x y = match y with
+    | Nic -> x
+    | Naslednik (b) -> Naslednik(x + b)
+  
+  let rec ( - ) x y = match (x, y) with
+    | x, Nic -> x
+    | Nic, y -> Nic
+    | (Naslednik (a), Naslednik (b)) -> a - b
+  
+  let rec ( * ) x y = match y with
+    | Nic -> Nic
+    | Naslednik (b) -> x + x * b
+  
+  let rec to_int = function 
+    | Nic -> 0 
+    | Naslednik x -> Int.add 1 (to_int x)
+
+  let rec of_int  = function
+    | 0 -> Nic
+    | x -> Naslednik(of_int (Int.sub x 1))
 
 end
 
@@ -79,7 +119,10 @@ end
 let sum_nat_100 = 
   (* let module Nat = Nat_int in *)
   let module Nat = Nat_peano in
-  Nat.zero (* to popravite na ustrezen izračun *)
+  let rec sum n =
+    if Nat.eq n Nat.zero then n else Nat.( + ) n (sum (Nat.( - ) n Nat.one))
+  in
+  sum (Nat.of_int 100) |> Nat.to_int
   (* |> Nat.to_int *)
 (* val sum_nat_100 : int = 5050 *)
 
@@ -135,7 +178,13 @@ let sum_nat_100 =
 module type COMPLEX = sig
   type t
   val eq : t -> t -> bool
-  (* Dodajte manjkajoče! *)
+  val zero : t
+  val one : t
+  val im : t
+  val neg : t -> t
+  val conj : t -> t
+  val ( + ) : t -> t -> t
+  val ( * ) : t -> t -> t
 end
 
 (*----------------------------------------------------------------------------*
@@ -147,8 +196,21 @@ module Cartesian : COMPLEX = struct
 
   type t = {re : float; im : float}
 
-  let eq x y = failwith "later"
-  (* Dodajte manjkajoče! *)
+  let eq x y = (x.re = y.re && x.im = y.im)
+
+  let zero = {re = 0.; im = 0.}
+
+  let one = {re = 1.; im = 0.}
+
+  let im = {re = 0.; im = 1.}
+
+  let neg {re; im} = {re = -1. *. re; im = -1. *. im}
+
+  let conj {re; im} = {re = re; im = -1. *. im}
+
+  let ( + ) x y = {re = x.re +. y.re; im = x.im +. y.im}
+
+  let ( * ) x y = {re = x.re *. y.re -. x.im *. y.im; im = x.im *. y.re +. x.re *. y.im}
 
 end
 
@@ -168,7 +230,17 @@ module Polar : COMPLEX = struct
   let rad_of_deg deg = (deg /. 180.) *. pi
   let deg_of_rad rad = (rad /. pi) *. 180.
 
-  let eq x y = failwith "later"
-  (* Dodajte manjkajoče! *)
+  let eq x y =
+    if x.magn = 0. && y.magn = 0. then true
+    else x.magn = y.magn && 
+         (mod_float (x.arg -. y.arg) (2. *. pi) = 0. ||
+          mod_float (y.arg -. x.arg) (2. *. pi) = 0.)
+  let zero  = {magn = 0.; arg = 0.}
+  let one  = {magn = 1.; arg = 0.}
+  let im  = {magn = 1.; arg = pi /. 2.}
+  let neg x = {magn = x.magn; arg = pi +. x.arg}
+  let conj x = {magn = x.magn; arg = -1. *. x.arg}
+  let ( + )  = failwith "later"
+  let ( * ) x y = {magn = x.magn *. y.magn; arg = x.arg +. y.arg}
 
 end
