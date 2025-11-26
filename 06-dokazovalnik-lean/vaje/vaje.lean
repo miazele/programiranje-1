@@ -8,8 +8,8 @@ def eksponent (A B C : Type) (f : C → Prod A B) : Prod (C → A) (C → B) :=
   ⟩
 def eksponent_prop (A B C : Prop) (f : C → A ∧ B) : (C → A) ∧ (C → B) :=
   ⟨
-    sorry,
-    sorry
+    (fun (x : C) => (f x).1),
+    (fun (y : C) => (f y).2)
   ⟩
 def eksponent_prop_s_taktikami (A B C : Prop) (f : C → A ∧ B) : (C → A) ∧ (C → B) :=
   by
@@ -113,15 +113,72 @@ theorem eq5 {A B C : Prop} : A ∧ (B ∨ C) ↔ (A ∧ B) ∨ (A ∧ C) :=
   by
     apply Iff.intro
     · intro h
-      
+      have h1 := h.left
+      have h2 := h.right
+      cases h2 with
+      | inl hb =>
+        apply Or.inl
+        exact ⟨h1, hb⟩
+      | inr hc =>
+        apply Or.inr
+        exact ⟨h1, hc⟩
     · intro h
+      apply And.intro
+      · cases h with
+        | inl hab =>
+          exact hab.left
+        | inr hac =>
+          exact hac.left
+      · cases h with
+        | inl hab =>
+          apply Or.inl
+          exact hab.right
+        | inr hac =>
+          apply Or.inr
+          exact hac.right
+
 
 theorem eq6 {A B C : Prop} : (B ∨ C) → A ↔ (B → A) ∧ (C → A) :=
-  sorry
+  by
+    apply Iff.intro
+    · intro h
+      apply And.intro
+      · intro hb
+        apply h
+        left
+        assumption
+      · intro hc
+        apply h
+        right
+        assumption
+    · intro h
+      intro hbc
+      cases hbc with
+      | inl hb =>
+        apply h.left
+        assumption
+      | inr hc =>
+        apply h.right
+        assumption
 
 theorem eq7 {A B C : Prop} : C → (A ∧ B) ↔ (C → A) ∧ (C → B) :=
-  sorry
-
+  by
+    apply Iff.intro
+    · intro h
+      apply And.intro
+      · intro hc
+        have hab := h hc
+        exact hab.left
+      · intro hc
+        have hab := h hc
+        exact hab.right
+    · intro h
+      intro hc
+      have hac := h.left
+      have hbc := h.right
+      have ha := hac hc
+      have hb := hbc hc
+      exact ⟨ha, hb⟩
 
 -- ------------------------------
 -- Enakosti naravnih števil (z uporabo `calc`)

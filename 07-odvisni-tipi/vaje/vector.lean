@@ -66,6 +66,7 @@ def stakniVektor' {m n : Nat} :
 
 -- Primer uporabe Eq.mpr, ki spremeni tip, če imamo dokaz, da sta tipa enaka
 #check Eq.mpr
+
 def stakniVektor'' {m n : Nat} :
   VektorBoolov m ->
   VektorBoolov n ->
@@ -74,7 +75,7 @@ def stakniVektor'' {m n : Nat} :
   fun xs ys =>
     match xs with
     -- Manjka dokaz: ⊢ VektorBoolov (0 + n) = VektorBoolov n
-    | VektorBoolov.prazen => Eq.mpr sorry ys -- Dokaz (0+n = n) podamo kot argument dokazu enakosti dolžin vektorjev
+    | VektorBoolov.prazen => Eq.mpr (by rw [Nat.zero_add]) ys -- Dokaz (0+n = n) podamo kot argument dokazu enakosti dolžin vektorjev
     | VektorBoolov.sestavljen x xs' =>
         by
           rw [Nat.succ_add]
@@ -108,8 +109,12 @@ def elementiFinite3 : List (Finite 3) :=
   ]
 
 -- Funkcija za varno branje elementov vektorja
-def vpogled {n : Nat} : VektorBoolov n -> Finite n -> Bool :=
-  sorry
+def vpogled {n : Nat} : VektorBoolov n → Finite n → Bool
+  | .prazen, fin_index => by
+      -- Ta primer se ne more zgoditi, ker Finite 0 nima elementov!
+      cases fin_index  -- To bo zaprlo vse možnosti
+  | .sestavljen x xs', .fzero => x
+  | .sestavljen x xs', .fsucc i => vpogled xs' i
 
 -- Vektor z dvema elementoma ([true, false])
 def testniVektor : VektorBoolov 2 :=
@@ -126,8 +131,14 @@ def index1 : Finite 2 :=
 -- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 -- Vektor z elementi poljubnega tipa A
 
-inductive VektorPoljuben where
-  sorry
+inductive VektorPoljuben : Type ->  Nat -> Type where
+  | prazen : {A : Type} -> VektorPoljuben A 0
+  | sestavljen :
+      {A : Type} ->
+      {n : Nat} ->
+      A ->
+      VektorPoljuben A n ->
+      VektorPoljuben A (Nat.succ n)
 
 -- Primer vektorja z elementi tipa Nat
 def vektorNaravnihStevil : VektorPoljuben Nat 3 :=

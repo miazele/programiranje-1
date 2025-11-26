@@ -57,7 +57,7 @@ def stakniVektor'' :
 :=
   fun xs ys =>
     match xs with
-    | VektorBoolov.prazen => Eq.mpr sorry ys
+    | VektorBoolov.prazen => Eq.mpr (by rw [Nat.zero_add]) ys
     | VektorBoolov.sestavljen x xs' =>
         by
           rw [Nat.succ_add]
@@ -87,4 +87,9 @@ def vsak_in_prop (X : Prop) (P Q : X -> Prop) :
   (∀ (x : X), P x) ∧  (∀ (x : X), Q x)
   :=
     by
-      sorry
+      intro h
+      constructor
+      · intro x
+        exact (h x).left
+      · intro x
+        exact (h x).right
