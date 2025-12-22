@@ -33,7 +33,7 @@ theorem vsota_lihih_kvadrat : (n : Nat) → vsota_lihih n = n * n :=
     | succ m ih =>
         calc
           vsota_lihih (m + 1)
-          _ = vsota_lihih m + (2 * m + 1) := by simp [vsota_lihih]
+          _ = vsota_lihih m + (2 * m + 1) := by rw [vsota_lihih]
           _ = m * m + (2 * m + 1) := by rw [ih]
           _ = m * m + (m + m + 1) := by rw [Nat.two_mul]
           _ = m * m + m + m + 1 := by repeat rw [Nat.add_assoc]
@@ -274,6 +274,7 @@ theorem pravilo_obstaja_disjunkcija : {A : Type} → {P Q : A → Prop} →
       | inr hq =>
         right
         exact ⟨x, hq⟩
+
     · intro h
       cases h with
       | inl hpx =>
@@ -287,21 +288,42 @@ theorem pravilo_obstaja_disjunkcija : {A : Type} → {P Q : A → Prop} →
 theorem obstaja_p_ali_za_vse_ne_p {A : Type} {P : A → Prop} :
   (∃ x, P x) ∨ (∀ x, ¬ P x) :=
   by
-    by_cases h : ∃ x, P x
-    · left
-      exact h
-    · right
+    have h := Classical.em (∃ x, P x)
+    cases h with
+    | inl h1 =>
+      left
+      exact h1
+    | inr h2 =>
+      right
       intro x
       intro hpx
       have : ∃ x, P x := ⟨x, hpx⟩
-      exact h this
+      exact h2 this
+
 
 theorem paradoks_pivca :
   {G : Type} → {P : G → Prop} →
   (g : G) →  -- (g : G) pove, da je v gostilni vsaj en gost
   ∃ (p : G), (P p → ∀ (x : G), P x) :=
   by
-    sorry
+    intro G P g
+    have h := Classical.em (∀ (x : G), P x)
+    cases h with -- ločimo primeri, ko pijejo vsi in ko ne pijejo vsi
+    | inl h_vsi =>
+      exact ⟨g, fun _ => h_vsi⟩ -- če pijejo vsi, potem je očitno
+    | inr h_ne_vsi =>
+      have h_obstaja : ∃ (x : G), ¬P x := by -- če ne pijejo vsi, potem obstaja nekdo, ki ne pije
+        apply Classical.byContradiction
+        intro h_neobstaja
+        apply h_ne_vsi
+        intro x
+        apply Classical.byContradiction
+        intro h_nepije
+        apply h_neobstaja
+        exact ⟨x, h_nepije⟩
+      rcases h_obstaja with ⟨p, hp⟩
+      exact ⟨p, fun _ => by contradiction⟩
+
 
 /------------------------------------------------------------------------------
  ## Dvojiška drevesa
