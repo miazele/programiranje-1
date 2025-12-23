@@ -74,7 +74,7 @@ theorem prava_formula_produktov : (n : Nat) → vsota_produktov n = (n * (n + 1)
       vsota_produktov n
       _ = vsota_produktov n * 3 / 3 := by omega
       _ = 3 * vsota_produktov n / 3 := by rw [Nat.mul_comm]
-      _ = (n * (n + 1) * (n + 2)) / 3 := by simp [formula_produktov]
+      _ = (n * (n + 1) * (n + 2)) / 3 := by rw [formula_produktov]
 
 /------------------------------------------------------------------------------
  ## Vektorji
@@ -132,8 +132,7 @@ def preslikaj : {A B : Type} → {n : Nat} → (A → B) → Vektor A n → Vekt
 def zip : {A B : Type} → {n : Nat} → Vektor A n → Vektor B n → Vektor (A × B) n :=
   fun xs ys => match xs with
   | .prazen => .prazen
-  | .sestavljen x xs' => match ys with
-                        | .sestavljen y ys' => .sestavljen (x, y) (zip xs' ys')
+  | .sestavljen x xs' => match ys with | .sestavljen y ys' => .sestavljen (x, y) (zip xs' ys')
 
 def dolzina : {A : Type} → {n : Nat} → Vektor A n → Nat :=
   fun xs => match xs with
@@ -308,7 +307,7 @@ theorem paradoks_pivca :
   by
     intro G P g
     have h := Classical.em (∀ (x : G), P x)
-    cases h with -- ločimo primeri, ko pijejo vsi in ko ne pijejo vsi
+    cases h with -- ločimo primera, ko pijejo vsi in ko ne pijejo vsi
     | inl h_vsi =>
       exact ⟨g, fun _ => h_vsi⟩ -- če pijejo vsi, potem je očitno
     | inr h_ne_vsi =>
@@ -410,7 +409,6 @@ theorem pomozna : ∀ t acc, vsota'.aux t acc = vsota t + acc :=
       rw [ihl]
       rw [ihd]
       omega
-
 
 
 theorem vsota_eq_vsota' : ∀ {t : Drevo Nat}, vsota t = vsota' t :=

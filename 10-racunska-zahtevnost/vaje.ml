@@ -18,13 +18,19 @@ Natančno definirajte pogoje, da funkcija `f` uredi seznam.
  - : int list = [7]
 [*----------------------------------------------------------------------------*)
 
+let rec insert y xs =
+  match xs with
+  | [] -> [y]
+  | x :: xs' -> if y < x then y :: x :: xs' else x :: insert y xs'
 
 (*----------------------------------------------------------------------------*]
  Prazen seznam je že urejen. Funkcija [insert_sort] uredi seznam tako da
  zaporedoma vstavlja vse elemente seznama v prazen seznam.
 [*----------------------------------------------------------------------------*)
 
-
+let rec insert_sort = function
+  | [] -> []
+  | x :: xs -> insert x (insert_sort xs)
 
 (*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*]
  Urejanje z Izbiranjem
@@ -72,6 +78,10 @@ Natančno definirajte pogoje, da funkcija `f` uredi seznam.
  - : int array = [|0; 4; 2; 3; 1|]
 [*----------------------------------------------------------------------------*)
 
+let swap a i j =
+  let neki = a.(i) in
+  a.(i) <- a.(j);
+  a.(j) <- neki
 
 (*----------------------------------------------------------------------------*]
  Funkcija [index_min a lower upper] poišče indeks najmanjšega elementa tabele
@@ -80,11 +90,24 @@ Natančno definirajte pogoje, da funkcija `f` uredi seznam.
  index_min [|0; 2; 9; 3; 6|] 2 4 = 3
 [*----------------------------------------------------------------------------*)
 
+let rec index_min a lower upper =
+  if lower = upper then lower
+  else
+    let min_rest = index_min a (lower + 1) upper in
+    if a.(lower) < a.(min_rest) then lower else min_rest
+
 
 (*----------------------------------------------------------------------------*]
  Funkcija [selection_sort_array] implementira urejanje z izbiranjem na mestu. 
 [*----------------------------------------------------------------------------*)
 
+let selection_sort_array xs =
+  let index_end = Array.length xs - 1 in
+  (* Every step moves boundary_sorted one place to the right. *)
+  for boundary_sorted = 0 to index_end do
+    let i = index_min xs boundary_sorted index_end in
+    swap xs i boundary_sorted
+  done
 
 (*----------------------------------------------------------------------------*]
  Funkcija [min_and_rest list] vrne par [Some (z, list')] tako da je [z]
@@ -92,11 +115,29 @@ Natančno definirajte pogoje, da funkcija `f` uredi seznam.
  pojavitvijo elementa [z]. V primeru praznega seznama vrne [None]. 
 [*----------------------------------------------------------------------------*)
 
+let min_and_rest list = 
+  let rec najdi_min min' = function
+    | [] -> min'
+    | x :: xs -> najdi_min (min x min') xs in
+  let rec odstrani y = function
+    | [] -> failwith "not found"
+    | x :: xs -> if x = y then xs else x :: odstrani y xs in
+  match list with
+  | [] -> None
+  | x :: xs -> Some (najdi_min x xs, odstrani (najdi_min x xs) (x::xs))
+
+
 (*----------------------------------------------------------------------------*]
  Funkcija [selection_sort] je implementacija zgoraj opisanega algoritma.
  Namig: Uporabi [min_and_rest] iz prejšnje naloge.
 [*----------------------------------------------------------------------------*)
 
+let selection_sort list =
+  let rec aux sortiran nesortiran =
+    match min_and_rest nesortiran with
+    | None -> sortiran
+    | Some (z, ostalo) -> aux (z :: sortiran) ostalo in
+  aux [] list (* obrnjeno *)
 
 (*----------------------------------------------------------------------------*]
  Funkcija [randlist len max] generira seznam dolžine [len] z naključnimi
@@ -106,6 +147,8 @@ Natančno definirajte pogoje, da funkcija `f` uredi seznam.
  val l : int list = [0; 1; 0; 4; 0; 9; 1; 2; 5; 4]
 [*----------------------------------------------------------------------------*)
 
+let rec randlist len max =
+  if len <= 0 then [] else Random.int max :: randlist (len - 1) max
 
 (*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=*]
  Sedaj lahko s pomočjo [randlist] primerjamo našo urejevalno funkcijo (imenovana
@@ -114,3 +157,7 @@ Natančno definirajte pogoje, da funkcija `f` uredi seznam.
  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  let test = (randlist 100 100) in (our_sort test = List.sort compare test);;
 [*-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=*)
+
+let test_sort () =
+  let test = randlist 100 100 in
+  assert (selection_sort test = List.sort compare test)
