@@ -202,8 +202,51 @@ module MAKE_SLOVAR (U : UREJEN_TIP) : SLOVAR with type kljuc = U.t = struct
       | Greater -> sestavljeno (l, kljuc, vrednost, dodaj k v d) |> uravnotezi
       | Equal -> Sestavljeno (h, l, k, v, d)
 
-  let popravi _ _ _ = assert false
-  let odstrani _ _ = assert false
+  
+  let rec odstrani k slovar = match slovar with
+  | Prazno -> Prazno
+  | Sestavljeno (_, l, kljuc, vrednost, d) as tree -> 
+    match U.primerjaj k kljuc with
+    | Less -> sestavljeno (odstrani k l, kljuc, vrednost, d) |> uravnotezi
+    | Greater -> sestavljeno (l, kljuc, vrednost, odstrani k d) |> uravnotezi
+    | Equal -> let succ drevo =  (* potrebujemo naslednika *)
+                  let rec minimalen = function
+                    | Prazno -> None
+                    | Sestavljeno (_, Prazno, x, y, _) -> Some (x, y)
+                    | Sestavljeno (_, l, _, _, _) -> minimalen l in
+                  match drevo with
+                  | Prazno -> None
+                  | Sestavljeno (_, l, x, _, d) -> minimalen d in
+                
+                match succ tree with
+                | None -> l
+                | Some (a, b) -> sestavljeno (l, a, b, odstrani a d) |> uravnotezi
+
+
+      (* match (l, d) with
+        | (Prazno, Prazno) -> Prazno
+        | (Prazno, d) -> d
+        | (l, Prazno) -> l
+        | (l, d) -> let mini *)
+
+
+  (* let rec odstrani k slovar = match slovar with
+  | Prazno -> Prazno
+  | Sestavljeno (h, l, kljuc, vrednost, d) when U.primerjaj k kljuc = Less -> Sestavljeno (h, odstrani k l, kljuc, vrednost, d)
+  | Sestavljeno (h, l, kljuc, vrednost, d) when U.primerjaj k kljuc = Greater -> Sestavljeno (h, l, kljuc, vrednost, odstrani k d)
+  | Sestavljeno (h, l, kljuc, vrednost, d) as bst -> let succ drevo =  (* potrebujemo naslednika *)
+                                                  let rec minimalen = function
+                                                  | Prazno -> None
+                                                  | Sestavljeno (_, Prazno, x, y, _) -> Some (x, y)
+                                                  | Sestavljeno (_, l, _, _, _) -> minimalen l in
+                                                  match drevo with
+                                                  | Prazno -> None
+                                                  | Sestavljeno (_, l, x, _, d) -> minimalen d in
+                                              match succ bst with
+                                              | None -> l
+                                              | Some (a, b) -> Sestavljeno (h, l, a, b, odstrani a d) |> uravnotezi  *)
+
+  let popravi k f slovar = assert false
   let velikost _ = assert false
   let kljuci _ = assert false
   let vrednosti _ = assert false
