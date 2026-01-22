@@ -240,7 +240,7 @@ let test_dict : (string, int) dict = Node (leaf ("a", 0), ("b", 1), Node (leaf (
 
 let rec dict_get k = function
      | Empty -> None
-     | Node (l, (a, b), r) -> if a = k then Some a else if k < a then dict_get k l else dict_get k r
+     | Node (l, (a, b), r) -> if a = k then Some b else if k < a then dict_get k l else dict_get k r
 
 (*----------------------------------------------------------------------------*]
  Funkcija [print_dict] sprejme slovar s ključi tipa [string] in vrednostmi tipa
