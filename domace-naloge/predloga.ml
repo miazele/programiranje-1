@@ -246,22 +246,110 @@ module MAKE_SLOVAR (U : UREJEN_TIP) : SLOVAR with type kljuc = U.t = struct
                                               | None -> l
                                               | Some (a, b) -> Sestavljeno (h, l, a, b, odstrani a d) |> uravnotezi  *)
 
-  let popravi k f slovar = assert false
-  let velikost _ = assert false
-  let kljuci _ = assert false
-  let vrednosti _ = assert false
-  let najmanjsi_opt _ = assert false
-  let najvecji_opt _ = assert false
-  let poisci_opt _ = assert false
-  let iter _ _ = assert false
-  let zlozi _ _ _ = assert false
-  let preslikaj _ _ = assert false
-  let preslikaji _ _ = assert false
-  let vsebuje _ _ = assert false
-  let za_vse _ _= assert false
-  let obstaja _ _= assert false
-  let v_seznam _ = assert false
-  let iz_seznama _ = assert false
+  let rec popravi k f slovar = 
+    match slovar with
+    | Prazno -> 
+      (match f None with
+      | None -> Prazno
+      | Some a -> dodaj k a Prazno)
+    | Sestavljeno (h, l, kljuc, vrednost, d) -> 
+      match U.primerjaj k kljuc with
+      | Less -> let novo_levo = popravi k f l in uravnotezi (sestavljeno (novo_levo, kljuc, vrednost, d))
+      | Greater -> let novo_desno = popravi k f d in uravnotezi (sestavljeno (l, kljuc, vrednost, novo_desno))
+      | Equal -> match f (Some vrednost) with
+        | Some a -> Sestavljeno (h, l, kljuc, a, d)
+        | None -> odstrani k slovar
+
+  let rec velikost = function
+    | Prazno -> 0
+    | Sestavljeno (_, l, _, _, d) -> 1 + velikost l + velikost d
+
+  let kljuci slovar = 
+    let rec aux acc = function
+    | Prazno -> acc
+    | Sestavljeno (_, l, k, _, d) -> aux (k :: aux acc d) l in 
+    aux [] slovar
+
+  let rec vrednosti slovar =
+    let rec aux acc = function
+    | Prazno -> acc
+    | Sestavljeno (_, l, _, v, d) -> aux (v :: aux acc d) l in
+    aux [] slovar
+
+  let rec najmanjsi_opt = function
+    | Prazno -> None
+    | Sestavljeno (_, Prazno, k, v, _) -> Some (k, v)
+    | Sestavljeno (_, l, _, _, _) -> najmanjsi_opt l
+
+  let rec najvecji_opt = function
+    | Prazno -> None
+    | Sestavljeno (_, _, k, v, Prazno) -> Some (k, v)
+    | Sestavljeno (_, _, _, _, d) -> najvecji_opt d
+
+  let rec poisci_opt k = function
+    | Prazno -> None
+    | Sestavljeno (_, l, kljuc, v, d) -> match U.primerjaj k kljuc with
+                                          | Less -> poisci_opt k l
+                                          | Greater -> poisci_opt k d
+                                          | Equal -> Some v
+
+  let iter f slovar = 
+    let rec aux = function
+    | Prazno -> ()
+    | Sestavljeno (_, l, k, v, d) ->
+        aux l;
+        f k v;
+        aux d in
+    aux slovar
+
+  let rec zlozi f slovar acc = 
+    match slovar with
+    | Prazno -> acc
+    | Sestavljeno (_, l, k, v, d) -> 
+      let acc1 = zlozi f l acc in
+      let acc2 = f k v acc1 in
+      zlozi f d acc2                   
+
+  let rec preslikaj f slovar = 
+    match slovar with
+    | Prazno -> Prazno
+    | Sestavljeno (h, l, k, v, d) -> Sestavljeno (h, preslikaj f l, k, f v, preslikaj f d)
+
+  let rec preslikaji f slovar = 
+    match slovar with
+    | Prazno -> Prazno
+    | Sestavljeno (h, l, k, v, d) -> Sestavljeno (h, preslikaji f l, k, f k v, preslikaji f d)
+  
+  let rec vsebuje k slovar = 
+    match slovar with
+    | Prazno -> false
+    | Sestavljeno (_, l, kljuc, _, d) -> 
+      match U.primerjaj k kljuc with
+      | Less -> vsebuje k l
+      | Greater -> vsebuje k d
+      | Equal -> true
+
+  let rec za_vse f slovar = 
+    match slovar with
+    | Prazno -> true
+    | Sestavljeno (_, l, k, v, d) -> za_vse f l && f k v && za_vse f d
+  
+  let rec obstaja f slovar = 
+    match slovar with
+    | Prazno -> false
+    | Sestavljeno (_, l, k, v, d) -> za_vse f l || f k v || za_vse f d
+  
+  let v_seznam slovar =
+    let rec aux acc = function
+    | Prazno -> acc
+    | Sestavljeno (_, l, k, v, d) -> aux ((k, v) :: aux acc d) l in 
+    aux [] slovar
+  
+  let iz_seznama list = 
+    let rec aux acc = function 
+    | [] -> acc
+    | (k, v) :: xs -> aux (dodaj k v acc) xs
+    in aux Prazno list
 end
 
 module SLOVAR_NIZ = MAKE_SLOVAR (STRING_UREJEN_TIP)
@@ -276,6 +364,7 @@ let slovar =
        | Some v -> Some ("sour " ^ v))
   |> SLOVAR_NIZ.preslikaj String.length
   |> SLOVAR_NIZ.v_seznam
+
 
 (*----------------------------------------------------------------------------*
   ## Turingovi stroji
