@@ -416,11 +416,12 @@ module Tape : TAPE = struct
     | _ :: right -> { left; right = chr :: right }
 end
 
+(*
 let primer_trak =
   Tape.(
     make "ABCDE" |> move Left |> move Left |> move Right |> move Right
     |> move Right |> move Right |> write '!' |> print)
-
+*)
 module type MACHINE = sig
   type t
 
@@ -486,14 +487,55 @@ end
 [*----------------------------------------------------------------------------*)
 
 module MachineUcinkovito : MACHINE = struct
-  type t = unit
+  (* Najprej definiramo tip za prehod (vrednost v slovarju) *)
+  type prehod = {
+    novo_stanje : state;
+    zapisani_znak : char;
+    smer : direction
+  }
 
-  let make _ _ = assert false
-  let initial _ = assert false
-  let add_transition _ _ _ _ _ = assert false
-  let step _ _ _ = assert false
-  let run _ _ = assert false
-  let speed_run _ _ = assert false
+  (* Tip stroja *)
+  type t = {
+    initial : state;
+    prehodi : prehod SLOVAR_NIZ.t  (* slovar s ključi (state * char) *)
+  }
+
+  (* Pomožna funkcija za pretvorbo ključa v niz za slovar *)
+  let kljuc_v_niz (s, c) = s ^ String.make 1 c
+  
+  let make initial _states = { initial; prehodi = SLOVAR_NIZ.prazen }
+
+  let initial { initial } = initial
+
+  let add_transition st chr st' chr' dir tm = 
+    let kljuc = kljuc_v_niz (st, chr) in
+    let nov_prehod = { novo_stanje = st'; zapisani_znak = chr'; smer = dir } in
+    { tm with prehodi = SLOVAR_NIZ.dodaj kljuc nov_prehod tm.prehodi }
+
+  let step tm st tape = 
+    let chr = Tape.read tape in
+    let kljuc = kljuc_v_niz (st, chr) in
+    match SLOVAR_NIZ.poisci_opt kljuc tm.prehodi with
+    | None -> None
+    | Some { novo_stanje; zapisani_znak; smer } -> Some (novo_stanje, tape |> Tape.write zapisani_znak |> Tape.move smer)
+
+  let run tm str =
+    let rec step' (st, tape) =
+      Tape.print tape;
+      print_endline st;
+      match step tm st tape with
+      | None -> ()
+      | Some config' -> step' config'
+    in
+    step' (initial tm, Tape.make str)
+  
+  let speed_run tm str =
+    let rec step' (st, tape) =
+      match step tm st tape with
+      | None -> Tape.print tape
+      | Some config' -> step' config'
+    in
+    step' (initial tm, Tape.make str)
 end
 
 
@@ -503,7 +545,56 @@ end
   sicer `0`.
 [*----------------------------------------------------------------------------*)
 
-let palindrom_stroj : MachineUcinkovito.t = assert false
+let palindrom_stroj : MachineUcinkovito.t =
+  let open MachineUcinkovito in
+  
+  make "start" []
+  
+  (* start: poišči prvi znak *)
+  |> add_transition "start" '0' "haveA" ' ' Right
+  |> add_transition "start" '1' "haveB" ' ' Right
+  |> add_transition "start" ' ' "accept" ' ' Left   (* prazen niz *)
+  
+  (* haveA: poišči desno do konca *)
+  |> add_transition "haveA" '0' "haveA" '0' Right
+  |> add_transition "haveA" '1' "haveA" '1' Right
+  |> add_transition "haveA" ' ' "matchA" ' ' Left   (* konec, pojdi na matchA *)
+  
+  (* haveB: poišči desno do konca *)
+  |> add_transition "haveB" '0' "haveB" '0' Right
+  |> add_transition "haveB" '1' "haveB" '1' Right
+  |> add_transition "haveB" ' ' "matchB" ' ' Left   (* konec, pojdi na matchB *)
+  
+  (* matchA: preveri, če je zadnji znak 0 *)
+  |> add_transition "matchA" '0' "back" ' ' Left    (* ujemanje, zbriši in nazaj *)
+  |> add_transition "matchA" '1' "reject" '1' Left  (* ni ujemanja *)
+  |> add_transition "matchA" ' ' "accept" ' ' Left  (* en sam znak *)
+  
+  (* matchB: preveri, če je zadnji znak 1 *)
+  |> add_transition "matchB" '0' "reject" '0' Left  (* ni ujemanja *)
+  |> add_transition "matchB" '1' "back" ' ' Left    (* ujemanje, zbriši in nazaj *)
+  |> add_transition "matchB" ' ' "accept" ' ' Left  (* en sam znak *)
+  
+  (* back: vrni se na začetek *)
+  |> add_transition "back" '0' "back" '0' Left
+  |> add_transition "back" '1' "back" '1' Left
+  |> add_transition "back" ' ' "start" ' ' Right    (* nazaj na start *)
+  
+  (* accept: končno stanje - zapiši 1 *)
+  |> add_transition "accept" '0' "accept" '0' Right
+  |> add_transition "accept" '1' "accept" '1' Right
+  |> add_transition "accept" ' ' "accept" '1' Left  (* zapiši 1 *)
+  
+  (* reject: končno stanje - zapiši 0 *)
+  |> add_transition "reject" '0' "reject" '0' Right
+  |> add_transition "reject" '1' "reject" '1' Right
+  |> add_transition "reject" ' ' "reject" '0' Left  (* zapiši 0 *)
+
+(* Testiramo *)
+let test1 = MachineUcinkovito.speed_run palindrom_stroj "101"  (* palindrom -> 1 *)
+let test2 = MachineUcinkovito.speed_run palindrom_stroj "100"  (* ni palindrom -> 0 *)
+let test3 = MachineUcinkovito.speed_run palindrom_stroj ""     (* prazen -> 1 *)
+let test4 = MachineUcinkovito.speed_run palindrom_stroj "0"    (* en znak -> 1 *)
 
 (*----------------------------------------------------------------------------*
   Sestavite Turingov stroj, ki na vhod sprejme niz `n` enic in na koncu na
