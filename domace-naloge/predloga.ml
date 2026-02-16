@@ -222,30 +222,6 @@ module MAKE_SLOVAR (U : UREJEN_TIP) : SLOVAR with type kljuc = U.t = struct
                 | None -> l
                 | Some (a, b) -> sestavljeno (l, a, b, odstrani a d) |> uravnotezi
 
-
-      (* match (l, d) with
-        | (Prazno, Prazno) -> Prazno
-        | (Prazno, d) -> d
-        | (l, Prazno) -> l
-        | (l, d) -> let mini *)
-
-
-  (* let rec odstrani k slovar = match slovar with
-  | Prazno -> Prazno
-  | Sestavljeno (h, l, kljuc, vrednost, d) when U.primerjaj k kljuc = Less -> Sestavljeno (h, odstrani k l, kljuc, vrednost, d)
-  | Sestavljeno (h, l, kljuc, vrednost, d) when U.primerjaj k kljuc = Greater -> Sestavljeno (h, l, kljuc, vrednost, odstrani k d)
-  | Sestavljeno (h, l, kljuc, vrednost, d) as bst -> let succ drevo =  (* potrebujemo naslednika *)
-                                                  let rec minimalen = function
-                                                  | Prazno -> None
-                                                  | Sestavljeno (_, Prazno, x, y, _) -> Some (x, y)
-                                                  | Sestavljeno (_, l, _, _, _) -> minimalen l in
-                                                  match drevo with
-                                                  | Prazno -> None
-                                                  | Sestavljeno (_, l, x, _, d) -> minimalen d in
-                                              match succ bst with
-                                              | None -> l
-                                              | Some (a, b) -> Sestavljeno (h, l, a, b, odstrani a d) |> uravnotezi  *)
-
   let rec popravi k f slovar = 
     match slovar with
     | Prazno -> 
@@ -416,12 +392,12 @@ module Tape : TAPE = struct
     | _ :: right -> { left; right = chr :: right }
 end
 
-(*
+
 let primer_trak =
   Tape.(
     make "ABCDE" |> move Left |> move Left |> move Right |> move Right
     |> move Right |> move Right |> write '!' |> print)
-*)
+
 module type MACHINE = sig
   type t
 
@@ -538,6 +514,13 @@ module MachineUcinkovito : MACHINE = struct
     step' (initial tm, Tape.make str)
 end
 
+(* Analiza časovne zahtevnosti add_transition : v MachineNeucinkovito je časovna zahtevnost O(1), saj se doda nov element na začetek seznama;
+    v MachineUcinkovito je časovna zahtevnost O(log n), saj uporablja AVL slovar, višina drevesa je približno log n *)
+
+(* Analiza časovne zahtevnosti step : v MachineNeucinkovito je časovna zahtevnost O(n), saj List.find_opt preišče cel seznam;
+    v MachineUcinkovito je časovna zahtevnost O(log n), saj SLOVAR_NIZ.poisci_opt išče po drevesu - največ log n korakov do najdenega elementa *)
+
+
 
 (*----------------------------------------------------------------------------*
   Sestavite Turingov stroj, ki na vhodnem nizu prepozna palindrom (iz `0` in
@@ -545,71 +528,208 @@ end
   sicer `0`.
 [*----------------------------------------------------------------------------*)
 
-let palindrom_stroj : MachineUcinkovito.t =
-  let open MachineUcinkovito in
-  
+let palindrom_stroj : MachineUcinkovito.t = let open MachineUcinkovito in
   make "start" []
   
-  (* start: poišči prvi znak *)
-  |> add_transition "start" '0' "haveA" ' ' Right
-  |> add_transition "start" '1' "haveB" ' ' Right
-  |> add_transition "start" ' ' "accept" ' ' Left   (* prazen niz *)
+  (* start *)
+  |> add_transition "start" '0' "haveZero" ' ' Right
+  |> add_transition "start" '1' "haveOne" ' ' Right
+  |> add_transition "start" ' ' "write1" ' ' Left
   
-  (* haveA: poišči desno do konca *)
-  |> add_transition "haveA" '0' "haveA" '0' Right
-  |> add_transition "haveA" '1' "haveA" '1' Right
-  |> add_transition "haveA" ' ' "matchA" ' ' Left   (* konec, pojdi na matchA *)
+  (* haveZero *)
+  |> add_transition "haveZero" '0' "haveZero" '0' Right
+  |> add_transition "haveZero" '1' "haveZero" '1' Right
+  |> add_transition "haveZero" ' ' "matchZero" ' ' Left
   
-  (* haveB: poišči desno do konca *)
-  |> add_transition "haveB" '0' "haveB" '0' Right
-  |> add_transition "haveB" '1' "haveB" '1' Right
-  |> add_transition "haveB" ' ' "matchB" ' ' Left   (* konec, pojdi na matchB *)
+  (* haveOne *)
+  |> add_transition "haveOne" '0' "haveOne" '0' Right
+  |> add_transition "haveOne" '1' "haveOne" '1' Right
+  |> add_transition "haveOne" ' ' "matchOne" ' ' Left
   
-  (* matchA: preveri, če je zadnji znak 0 *)
-  |> add_transition "matchA" '0' "back" ' ' Left    (* ujemanje, zbriši in nazaj *)
-  |> add_transition "matchA" '1' "reject" '1' Left  (* ni ujemanja *)
-  |> add_transition "matchA" ' ' "accept" ' ' Left  (* en sam znak *)
+  (* matchZero *)
+  |> add_transition "matchZero" '0' "back" ' ' Left    
+  |> add_transition "matchZero" '1' "write0" ' ' Left  
+  |> add_transition "matchZero" ' ' "write1" ' ' Left  
   
-  (* matchB: preveri, če je zadnji znak 1 *)
-  |> add_transition "matchB" '0' "reject" '0' Left  (* ni ujemanja *)
-  |> add_transition "matchB" '1' "back" ' ' Left    (* ujemanje, zbriši in nazaj *)
-  |> add_transition "matchB" ' ' "accept" ' ' Left  (* en sam znak *)
+  (* matchOne *)
+  |> add_transition "matchOne" '0' "write0" ' ' Left  
+  |> add_transition "matchOne" '1' "back" ' ' Left    
+  |> add_transition "matchOne" ' ' "write1" ' ' Left  
   
-  (* back: vrni se na začetek *)
+  (* back *)
   |> add_transition "back" '0' "back" '0' Left
   |> add_transition "back" '1' "back" '1' Left
-  |> add_transition "back" ' ' "start" ' ' Right    (* nazaj na start *)
+  |> add_transition "back" ' ' "start" ' ' Right 
   
-  (* accept: končno stanje - zapiši 1 *)
-  |> add_transition "accept" '0' "accept" '0' Right
-  |> add_transition "accept" '1' "accept" '1' Right
-  |> add_transition "accept" ' ' "accept" '1' Left  (* zapiši 1 *)
+  (* write1 *)
+  |> add_transition "write1" '0' "write1" '0' Right
+  |> add_transition "write1" '1' "write1" '1' Right
+  |> add_transition "write1" ' ' "halt" '1' Left  
   
-  (* reject: končno stanje - zapiši 0 *)
-  |> add_transition "reject" '0' "reject" '0' Right
-  |> add_transition "reject" '1' "reject" '1' Right
-  |> add_transition "reject" ' ' "reject" '0' Left  (* zapiši 0 *)
+  (* write0 *)
+  |> add_transition "write0" '0' "write0" '0' Right
+  |> add_transition "write0" '1' "write0" '1' Right
+  |> add_transition "write0" ' ' "halt" '0' Left
+  
+  (* halt -> končno stanje *)
 
-(* Testiramo *)
-let test1 = MachineUcinkovito.speed_run palindrom_stroj "101"  (* palindrom -> 1 *)
-let test2 = MachineUcinkovito.speed_run palindrom_stroj "100"  (* ni palindrom -> 0 *)
-let test3 = MachineUcinkovito.speed_run palindrom_stroj ""     (* prazen -> 1 *)
-let test4 = MachineUcinkovito.speed_run palindrom_stroj "0"    (* en znak -> 1 *)
+let test1 = MachineUcinkovito.speed_run palindrom_stroj "101"  (* palindrom -> 1 *)  
+let test2 = MachineUcinkovito.speed_run palindrom_stroj "100"  (* ni palindrom -> 0 *)  
+let test3 = MachineUcinkovito.speed_run palindrom_stroj ""     (* prazen -> 1 *)  
+let test4 = MachineUcinkovito.speed_run palindrom_stroj "0"    (* en znak -> 1 *)  
 
 (*----------------------------------------------------------------------------*
   Sestavite Turingov stroj, ki na vhod sprejme niz `n` enic in na koncu na
   traku zapiše `n^2` enic.
 [*----------------------------------------------------------------------------*)
 
-let kvadrat_stroj : MachineUcinkovito.t = assert false
+let kvadrat_stroj : MachineUcinkovito.t = let open MachineUcinkovito in
+  make "start" []
+  
+  (* start *)
+  |> add_transition "start" '1' "start" '1' Right
+  |> add_transition "start" ' ' "spotX" '#' Left
+  
+  (* spotX *)
+  |> add_transition "spotX" '1' "spotX" '1' Left
+  |> add_transition "spotX" 'Y' "spotX" 'Y' Left
+  |> add_transition "spotX" 'Z' "spotX" 'Z' Left
+  |> add_transition "spotX" 'X' "addX" 'X' Right
+  |> add_transition "spotX" ' ' "addX" ' ' Right
+  
+  (* addX *)
+  |> add_transition "addX" '1' "backToStart" 'X' Left
+  |> add_transition "addX" 'Z' "backToStart" 'X' Left
+  |> add_transition "addX" '#' "findEnd" '#' Left
+  
+  (* findEnd *)
+  |> add_transition "findEnd" 'X' "findEnd" 'X' Left
+  |> add_transition "findEnd" ' ' "clean" ' ' Right
+  
+  (* clean - both X and # have same transition *)
+  |> add_transition "clean" 'X' "clean" ' ' Right
+  |> add_transition "clean" '#' "clean" ' ' Right
+  |> add_transition "clean" '1' "end" '1' Left
+  
+  (* backToStart *)
+  |> add_transition "backToStart" ' ' "check" ' ' Right
+  |> add_transition "backToStart" 'X' "backToStart" 'X' Left
+  |> add_transition "backToStart" 'Y' "backToStart" 'Y' Left
+  |> add_transition "backToStart" '1' "backToStart" '1' Left
+  
+  (* check *)
+  |> add_transition "check" 'X' "goToEnd" 'Y' Right
+  
+  (* goToEnd *)
+  |> add_transition "goToEnd" 'X' "goToEnd" 'X' Right
+  |> add_transition "goToEnd" 'Y' "goToEnd" 'Y' Right
+  |> add_transition "goToEnd" 'Z' "goToEnd" 'Z' Right
+  |> add_transition "goToEnd" '#' "goToEnd" '#' Right
+  |> add_transition "goToEnd" '1' "goToEnd" '1' Right
+  |> add_transition "goToEnd" ' ' "findYZ" '1' Left
+  
+  (* findYZ *)
+  |> add_transition "findYZ" 'X' "findYZ" 'X' Left
+  |> add_transition "findYZ" '1' "findYZ" '1' Left
+  |> add_transition "findYZ" '#' "findYZ" '#' Left
+  |> add_transition "findYZ" 'Y' "writeYZ" 'Y' Right
+  |> add_transition "findYZ" 'Z' "writeYZ" 'Z' Right
+  
+  (* writeYZ *)
+  |> add_transition "writeYZ" '1' "goToEnd" 'Z' Right
+  |> add_transition "writeYZ" 'X' "goToEnd" 'Y' Right
+  |> add_transition "writeYZ" '#' "rewrite" '#' Left
+  
+  (* rewrite *)
+  |> add_transition "rewrite" 'Y' "rewrite" 'X' Left
+  |> add_transition "rewrite" 'Z' "rewrite" '1' Left
+  |> add_transition "rewrite" ' ' "findHash" ' ' Right
+  
+  (* findHash *)
+  |> add_transition "findHash" 'X' "findHash" 'X' Right
+  |> add_transition "findHash" '1' "findHash" '1' Right
+  |> add_transition "findHash" '#' "spotX" '#' Left
+  
+  (* end - končmno stanje *)
 
+
+let test11 = MachineUcinkovito.speed_run kvadrat_stroj "1111"  (* palindrom -> 1 *)  
+let test12 = MachineUcinkovito.speed_run kvadrat_stroj "111"  (* ni palindrom -> 0 *)  
+let test13 = MachineUcinkovito.speed_run kvadrat_stroj "11"     (* prazen -> 1 *)  
+let test14 = MachineUcinkovito.speed_run kvadrat_stroj "1"    (* en znak -> 1 *)  
 (*----------------------------------------------------------------------------*
   Sestavite Turingov stroj, ki na začetku na traku sprejme število `n`,
   zapisano v dvojiškem zapisu, na koncu pa naj bo na traku zapisanih
   natanko `n` enic.
 [*----------------------------------------------------------------------------*)
 
-let enice_stroj : MachineUcinkovito.t = assert false
+(* pri reševanju predpostavimo, da je n naravno število :) *)
+
+let enice_stroj : MachineUcinkovito.t = let open MachineUcinkovito in
+  make "init" []
+
+  (* init *)
+  |> add_transition "init" '0' "init" '0' Right
+  |> add_transition "init" '1' "init" '1' Right
+  |> add_transition "init" ' ' "addCounter" '#' Right
+  
+  (* addCounter *)
+  |> add_transition "addCounter" '0' "addCounter" '0' Right
+  |> add_transition "addCounter" '1' "addCounter" '1' Right
+  |> add_transition "addCounter" '#' "addCounter" '#' Right
+  |> add_transition "addCounter" ' ' "backToNumber" '1' Left
+
+  (* backToNumber *)
+  |> add_transition "backToNumber" '0' "backToNumber" '0' Left
+  |> add_transition "backToNumber" '1' "backToNumber" '1' Left
+  |> add_transition "backToNumber" '#' "backToNumber" '#' Left
+  |> add_transition "backToNumber" ' ' "start" ' ' Right
+
+  (* start *)
+  |> add_transition "start" '0' "start" '0' Right
+  |> add_transition "start" '1' "start" '1' Right
+  |> add_transition "start" '#' "decrement" '#' Left
+  |> add_transition "start" ' ' "decrement" ' ' Left
+
+  (* decrement *)
+  |> add_transition "decrement" '0' "carry" '1' Left
+  |> add_transition "decrement" '1' "backToStart" '0' Left
+  |> add_transition "decrement" ' ' "backToStart" ' ' Left
+
+  (* carry *)
+  |> add_transition "carry" '1' "backToStart" '0' Left
+  |> add_transition "carry" '0' "carry" '1' Left
+  |> add_transition "carry" ' ' "backToStart" ' ' Left
+
+  (* backToStart *)
+  |> add_transition "backToStart" '0' "backToStart" '0' Left
+  |> add_transition "backToStart" '1' "backToStart" '1' Left
+  |> add_transition "backToStart" ' ' "removeZeros" ' ' Right
+
+  (* removeZeros *)
+  |> add_transition "removeZeros" '0' "removeZeros" ' ' Right
+  |> add_transition "removeZeros" '1' "moveRight" '1' Left
+  |> add_transition "removeZeros" ' ' "moveRight" ' ' Left
+  |> add_transition "removeZeros" '#' "halt" ' ' Right
+
+  (* moveRight *)
+  |> add_transition "moveRight" '0' "addOne" '0' Right
+  |> add_transition "moveRight" '1' "addOne" '1' Right
+  |> add_transition "moveRight" ' ' "addOne" ' ' Right
+  |> add_transition "moveRight" '#' "addOne" '#' Right
+
+  (* addOne *)
+  |> add_transition "addOne" '0' "addOne" '0' Right
+  |> add_transition "addOne" '1' "addOne" '1' Right
+  |> add_transition "addOne" '#' "addOne" '#' Right
+  |> add_transition "addOne" ' ' "backToNumber" '1' Left
+
+  (* halt -> končno stanje *)
+
+let test99 = MachineUcinkovito.speed_run enice_stroj "101"
+let test98 = MachineUcinkovito.speed_run enice_stroj "100"
+let test97 = MachineUcinkovito.speed_run enice_stroj "11"
+let test96 = MachineUcinkovito.speed_run enice_stroj "1"
 
 (*----------------------------------------------------------------------------*
   Sestavite ravno obratni Turingov stroj, torej tak, ki na začetku na traku
@@ -617,7 +737,43 @@ let enice_stroj : MachineUcinkovito.t = assert false
   v dvojiškem zapisu.
 [*----------------------------------------------------------------------------*)
 
-let dvojski_stroj : MachineUcinkovito.t = assert false
+let dvojski_stroj : MachineUcinkovito.t = let open MachineUcinkovito in
+  make "start" []
+
+  (* start *)
+  |> add_transition "start" '1' "addCounter" '1' Left
+
+  (* addCounter *)
+  |> add_transition "addCounter" ' ' "addZero" '#' Left
+
+  (* addZero *)
+  |> add_transition "addZero" ' ' "goToEnd" '0' Right
+
+  (* goToEnd *)
+  |> add_transition "goToEnd" '1' "goToEnd" '1' Right
+  |> add_transition "goToEnd" '#' "goToEnd" '#' Right
+  |> add_transition "goToEnd" '0' "goToEnd" '0' Right
+  |> add_transition "goToEnd" ' ' "deleteLastOne" ' ' Left
+
+  (* deleteLastOne *)
+  |> add_transition "deleteLastOne" '1' "goToStart" ' ' Left
+  |> add_transition "deleteLastOne" '#' "done" ' ' Left
+
+  (* goToStart *)
+  |> add_transition "goToStart" '1' "goToStart" '1' Left
+  |> add_transition "goToStart" '#' "carry" '#' Left
+
+  (* carry *)
+  |> add_transition "carry" '1' "carry" '0' Left
+  |> add_transition "carry" '0' "goToEnd" '1' Right
+  |> add_transition "carry" ' ' "goToEnd" '1' Right
+
+  (* done -> končno stanje *)
+
+let test89 = MachineUcinkovito.speed_run dvojski_stroj "111111"
+let test88 = MachineUcinkovito.speed_run dvojski_stroj "11111"
+let test87 = MachineUcinkovito.speed_run dvojski_stroj "1111"
+let test86 = MachineUcinkovito.speed_run dvojski_stroj "1"
 
 (*----------------------------------------------------------------------------*
   Sestavite Turingov stroj, ki na začetku na traku sprejme oklepaje `(` in
@@ -625,4 +781,118 @@ let dvojski_stroj : MachineUcinkovito.t = assert false
   oklepaji pravilno uravnoteženi in gnezdeni, ter `0` sicer.
 [*----------------------------------------------------------------------------*)
 
-let uravnotezeni_oklepaji_stroj : MachineUcinkovito.t = assert false
+let uravnotezeni_oklepaji_stroj : MachineUcinkovito.t = let open MachineUcinkovito in
+  make "start" []
+
+  (* start *)
+  |> add_transition "start" ' ' "accept" ' ' Left
+  |> add_transition "start" '#' "start" ' ' Right
+  |> add_transition "start" '(' "openParen" '(' Right
+  |> add_transition "start" ')' "reject" ')' Left
+  |> add_transition "start" '[' "openBracket" '[' Right
+  |> add_transition "start" ']' "reject" ']' Left
+  |> add_transition "start" '{' "openBrace" '{' Right
+  |> add_transition "start" '}' "reject" '}' Left
+
+  (* openParen *)
+  |> add_transition "openParen" ' ' "reject" ' ' Left
+  |> add_transition "openParen" '#' "openParen" '#' Right
+  |> add_transition "openParen" '(' "openParen" '(' Right
+  |> add_transition "openParen" ')' "closedParen" '#' Left
+  |> add_transition "openParen" '[' "openBracket" '[' Right
+  |> add_transition "openParen" ']' "reject" ']' Left
+  |> add_transition "openParen" '{' "openBrace" '{' Right
+  |> add_transition "openParen" '}' "reject" '}' Left
+
+  (* openBracket *)
+  |> add_transition "openBracket" ' ' "reject" ' ' Left
+  |> add_transition "openBracket" '#' "openBracket" '#' Right
+  |> add_transition "openBracket" '(' "openParen" '(' Right
+  |> add_transition "openBracket" ')' "reject" ')' Left
+  |> add_transition "openBracket" '[' "openBracket" '[' Right
+  |> add_transition "openBracket" ']' "closedBracket" '#' Left
+  |> add_transition "openBracket" '{' "openBrace" '{' Right
+  |> add_transition "openBracket" '}' "reject" '}' Left
+
+  (* openBrace *)
+  |> add_transition "openBrace" ' ' "reject" ' ' Left
+  |> add_transition "openBrace" '#' "openBrace" '#' Right
+  |> add_transition "openBrace" '(' "openParen" '(' Right
+  |> add_transition "openBrace" ')' "reject" ')' Left
+  |> add_transition "openBrace" '[' "openBracket" '[' Right
+  |> add_transition "openBrace" ']' "reject" ']' Left
+  |> add_transition "openBrace" '{' "openBrace" '{' Right
+  |> add_transition "openBrace" '}' "closedBrace" '#' Left
+  
+  (* closedParen *)
+  |> add_transition "closedParen" ' ' "reject" ' ' Right
+  |> add_transition "closedParen" '#' "closedParen" '#' Left
+  |> add_transition "closedParen" '(' "repeat" '#' Left
+  |> add_transition "closedParen" ')' "closedParen" ')' Left
+  |> add_transition "closedParen" '[' "reject" '[' Left
+  |> add_transition "closedParen" ']' "closedBracket" ']' Left
+  |> add_transition "closedParen" '{' "reject" '{' Left
+  |> add_transition "closedParen" '}' "closedBrace" '}' Left
+
+  (* closedBracket *)
+  |> add_transition "closedBracket" ' ' "reject" ' ' Right
+  |> add_transition "closedBracket" '#' "closedBracket" '#' Left
+  |> add_transition "closedBracket" '(' "reject" '(' Left
+  |> add_transition "closedBracket" ')' "closedParen" ')' Left
+  |> add_transition "closedBracket" '[' "repeat" '#' Left
+  |> add_transition "closedBracket" ']' "closedBracket" ']' Left
+  |> add_transition "closedBracket" '{' "reject" '{' Left
+  |> add_transition "closedBracket" '}' "closedBrace" '}' Left
+
+  (* closedBrace *)
+  |> add_transition "closedBrace" ' ' "reject" ' ' Right
+  |> add_transition "closedBrace" '#' "closedBrace" '#' Left
+  |> add_transition "closedBrace" '(' "reject" '(' Left
+  |> add_transition "closedBrace" ')' "closedParen" ')' Left
+  |> add_transition "closedBrace" '[' "reject" '[' Left
+  |> add_transition "closedBrace" ']' "closedBracket" ']' Left
+  |> add_transition "closedBrace" '{' "repeat" '#' Left
+  |> add_transition "closedBrace" '}' "closedBrace" '}' Left
+
+  (* repeat *)
+  |> add_transition "repeat" ' ' "start" ' ' Right
+  |> add_transition "repeat" '#' "repeat" '#' Left
+  |> add_transition "repeat" '(' "openParen" '(' Right
+  |> add_transition "repeat" ')' "repeat" ')' Left
+  |> add_transition "repeat" '[' "openBracket" '[' Right
+  |> add_transition "repeat" ']' "repeat" ']' Left
+  |> add_transition "repeat" '{' "openBrace" '{' Right
+  |> add_transition "repeat" '}' "repeat" '}' Left
+
+  (* accept *)
+  |> add_transition "accept" ' ' "halt" '1' Left
+  |> add_transition "accept" '0' "accept" ' ' Right
+  |> add_transition "accept" '1' "accept" ' ' Right
+  |> add_transition "accept" '#' "accept" ' ' Right
+  |> add_transition "accept" '(' "accept" ' ' Right
+  |> add_transition "accept" ')' "accept" ' ' Right
+  |> add_transition "accept" '[' "accept" ' ' Right
+  |> add_transition "accept" ']' "accept" ' ' Right
+  |> add_transition "accept" '{' "accept" ' ' Right
+  |> add_transition "accept" '}' "accept" ' ' Right
+
+  (* reject *)
+  |> add_transition "reject" ' ' "halt" '0' Left
+  |> add_transition "reject" '0' "reject" ' ' Right
+  |> add_transition "reject" '1' "reject" ' ' Right
+  |> add_transition "reject" '#' "reject" ' ' Right
+  |> add_transition "reject" '(' "reject" ' ' Right
+  |> add_transition "reject" ')' "reject" ' ' Right
+  |> add_transition "reject" '[' "reject" ' ' Right
+  |> add_transition "reject" ']' "reject" ' ' Right
+  |> add_transition "reject" '{' "reject" ' ' Right
+  |> add_transition "reject" '}' "reject" ' ' Right
+
+  (* halt -> končno stanje *)
+
+
+let test59 = MachineUcinkovito.speed_run uravnotezeni_oklepaji_stroj "((()))()"
+let test58 = MachineUcinkovito.speed_run uravnotezeni_oklepaji_stroj "{([])}[()]"
+let test57 = MachineUcinkovito.speed_run uravnotezeni_oklepaji_stroj "([)]"
+let test56 = MachineUcinkovito.speed_run uravnotezeni_oklepaji_stroj "{{]}}"
+let test55 = MachineUcinkovito.speed_run uravnotezeni_oklepaji_stroj "{"
