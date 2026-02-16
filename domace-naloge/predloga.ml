@@ -653,10 +653,11 @@ let kvadrat_stroj : MachineUcinkovito.t = let open MachineUcinkovito in
   (* end - končmno stanje *)
 
 
-let test11 = MachineUcinkovito.speed_run kvadrat_stroj "1111"  (* palindrom -> 1 *)  
-let test12 = MachineUcinkovito.speed_run kvadrat_stroj "111"  (* ni palindrom -> 0 *)  
-let test13 = MachineUcinkovito.speed_run kvadrat_stroj "11"     (* prazen -> 1 *)  
-let test14 = MachineUcinkovito.speed_run kvadrat_stroj "1"    (* en znak -> 1 *)  
+let test11 = MachineUcinkovito.speed_run kvadrat_stroj "1111"
+let test12 = MachineUcinkovito.speed_run kvadrat_stroj "111"
+let test13 = MachineUcinkovito.speed_run kvadrat_stroj "11"
+let test14 = MachineUcinkovito.speed_run kvadrat_stroj "1"
+
 (*----------------------------------------------------------------------------*
   Sestavite Turingov stroj, ki na začetku na traku sprejme število `n`,
   zapisano v dvojiškem zapisu, na koncu pa naj bo na traku zapisanih
